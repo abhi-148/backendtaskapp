@@ -1,14 +1,13 @@
 import express from "express";
 import { createProject, getProjects } from "../controllers/projectController.js";
 import { protect } from "../middleware/authMiddleware.js";
-import { isAdmin } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-// Admin only
-router.post("/", protect, isAdmin, createProject);
-
-// Logged in users
+// GET projects
 router.get("/", protect, getProjects);
+
+// 🔥 IMPORTANT (missing था)
+router.post("/", protect, createProject);
 
 export default router;

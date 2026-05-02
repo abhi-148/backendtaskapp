@@ -6,7 +6,14 @@ import Task from "../models/Task.js";
 // ==========================
 export const createTask = async (req, res) => {
   try {
-    const { title, description, projectId, assignedTo, dueDate } = req.body;
+    const {
+      title,
+      description,
+      projectId,
+      assignedTo,
+      dueDate,
+      priority
+    } = req.body;
 
     // ✅ VALIDATION
     if (!title || !projectId) {
@@ -15,7 +22,7 @@ export const createTask = async (req, res) => {
       });
     }
 
-    // ✅ USER CHECK (VERY IMPORTANT)
+    // ✅ USER CHECK
     if (!req.user || !req.user.id) {
       return res.status(401).json({
         error: "Unauthorized - No user found"
@@ -26,9 +33,10 @@ export const createTask = async (req, res) => {
       title,
       description,
       projectId,
-      assignedTo: assignedTo || req.user.id, // fallback
+      assignedTo: assignedTo || req.user.id, // auto assign
       createdBy: req.user.id,
-      dueDate
+      dueDate,
+      priority: priority || "medium"
     });
 
     res.status(201).json({
@@ -53,7 +61,6 @@ export const getTasks = async (req, res) => {
   try {
     const { projectId } = req.query;
 
-    // optional filter
     const filter = {
       assignedTo: req.user.id
     };
@@ -91,10 +98,17 @@ export const updateTaskStatus = async (req, res) => {
       });
     }
 
+    const updateData = { status };
+
+    // 🔥 Auto set completedAt
+    if (status === "done") {
+      updateData.completedAt = new Date();
+    }
+
     const task = await Task.findByIdAndUpdate(
       req.params.id,
-      { status },
-      { new: true }
+      updateData,
+      { returnDocument: "after" } // ✅ latest mongoose fix
     );
 
     if (!task) {
@@ -119,15 +133,18 @@ export const updateTaskStatus = async (req, res) => {
 
 
 // ==========================
-// DELETE TASK (BONUS 🔥)
+// DELETE TASK
 // ==========================
 export const deleteTask = async (req, res) => {
   try {
-    const task = await Task.findByIdAndDelete(req.params.id);
+    const task = await Task.findOneAndDelete({
+      _id: req.params.id,
+      createdBy: req.user.id // 🔥 secure delete
+    });
 
     if (!task) {
       return res.status(404).json({
-        error: "Task not found"
+        error: "Task not found or unauthorized"
       });
     }
 
